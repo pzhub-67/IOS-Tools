@@ -1,6 +1,8 @@
-// Video Downloader for Scriptable (v2: accepts web page links too)
+// Video Downloader for Scriptable (v3: with history)
 // Paste a direct video link OR a web page link. For pages, the script looks for video files the page itself exposes.
+// Requires History.js in the same Scriptable folder.
 
+const History = importModule("History")
 const fm = FileManager.local()
 
 async function alertMsg(title, msg) {
@@ -61,13 +63,13 @@ async function isVideoLink(url) {
   }
 }
 
-async function download(url) {
+async function download(target, sourcePage) {
   let name = ""
-  try { name = decodeURIComponent(url.split("?")[0].split("/").pop() || "") } catch (e) {}
+  try { name = decodeURIComponent(target.split("?")[0].split("/").pop() || "") } catch (e) {}
   if (!/\.(mp4|mov|m4v|webm)$/i.test(name)) name = "video-" + Date.now() + ".mp4"
   const path = fm.joinPath(fm.temporaryDirectory(), name)
 
-  const req = new Request(url)
+  const req = new Request(target)
   req.timeoutInterval = 600
   const data = await req.load()
   const status = req.response.statusCode
@@ -76,6 +78,7 @@ async function download(url) {
   if (type.includes("text/html")) throw new Error("That link returned a web page, not a video.")
 
   fm.write(path, data)
+  History.add({ type: "video", title: name, url: target, page: sourcePage !== target ? sourcePage : undefined })
   // Choose "Save Video" (Photos) or "Save to Files"
   await ShareSheet.present([path])
 }
@@ -86,8 +89,14 @@ a.title = "Download Video"
 a.message = "Paste a video link or a web page link"
 a.addTextField("https://...", Pasteboard.paste() || "")
 a.addAction("Go")
+a.addAction("History")
 a.addCancelAction("Cancel")
-if ((await a.present()) === -1) return
+const choice = await a.present()
+if (choice === -1) return
+if (choice === 1) {
+  await History.show()
+  return
+}
 
 const url = a.textFieldValue(0).trim()
 if (!/^https?:\/\//i.test(url)) {
@@ -128,7 +137,7 @@ try {
     }
   }
 
-  await download(target)
+  await download(target, url)
 } catch (err) {
   await alertMsg("Download failed", String(err.message || err))
 }
