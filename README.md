@@ -51,3 +51,5 @@ Only download or play videos you have the right to use. You are responsible for 
 ## License
 
 This project is licensed under the GNU General Public License. See the [LICENSE](LICENSE) file for details.
+
+Probably could be set up for IOS shortcuts
